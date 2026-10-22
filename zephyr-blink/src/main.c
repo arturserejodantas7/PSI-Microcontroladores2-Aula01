@@ -1,93 +1,43 @@
-/*
- * Copyright (c) 2016 Intel Corporation
- *
- * SPDX-License-Identifier: Apache-2.0
- */
-
 #include <zephyr/kernel.h>
-#include <zephyr/device.h>
 #include <zephyr/drivers/gpio.h>
 
-#define SLEEP_TIME_MS 500
+/* Tempo entre cada troca de estado (acende/apaga) de cada LED */
+#define LED1_INTERVALO_MS 1000
+#define LED2_INTERVALO_MS 500
 
-// Define o LED usando Device Tree
-#define LED0_NODE DT_ALIAS(led0)
+/* LED RGB da placa: led0 = verde, led1 = azul */
+static const struct gpio_dt_spec led1 = GPIO_DT_SPEC_GET(DT_ALIAS(led0), gpios);
+static const struct gpio_dt_spec led2 = GPIO_DT_SPEC_GET(DT_ALIAS(led1), gpios);
 
-// Verifica se o LED está definido no Device Tree
-#if DT_NODE_HAS_STATUS(LED0_NODE, okay)
-static const struct gpio_dt_spec led = GPIO_DT_SPEC_GET(LED0_NODE, gpios);
-#else
-#error "Unsupported board: led0 devicetree alias is not defined"
-#endif
-
-void main(void)
+int main(void)
 {
-    int ret;
-
-    // Verifica se o device está pronto
-    if (!gpio_is_ready_dt(&led)) {
-        printk("Error: LED device %s is not ready\n", led.port->name);
-        return;
+    if (!gpio_is_ready_dt(&led1) || !gpio_is_ready_dt(&led2)) {
+        return 0;
     }
 
-    // Configura o pino como saída
-    ret = gpio_pin_configure_dt(&led, GPIO_OUTPUT_ACTIVE);
-    if (ret < 0) {
-        printk("Error %d: failed to configure LED pin\n", ret);
-        return;
-    }
+    gpio_pin_configure_dt(&led1, GPIO_OUTPUT_INACTIVE);
+    gpio_pin_configure_dt(&led2, GPIO_OUTPUT_INACTIVE);
 
-    printk("LED blinking on %s pin %d\n", led.port->name, led.pin);
+    int64_t proximo1 = k_uptime_get() + LED1_INTERVALO_MS;
+    int64_t proximo2 = k_uptime_get() + LED2_INTERVALO_MS;
 
     while (1) {
-        // Toggle do LED usando a nova API
-        gpio_pin_toggle_dt(&led);
-        k_msleep(SLEEP_TIME_MS);
+        int64_t agora = k_uptime_get();
+
+        if (agora >= proximo1) {
+            gpio_pin_toggle_dt(&led1);
+            proximo1 += LED1_INTERVALO_MS;
+        }
+        if (agora >= proximo2) {
+            gpio_pin_toggle_dt(&led2);
+            proximo2 += LED2_INTERVALO_MS;
+        }
+
+        /* Dorme até o próximo LED precisar trocar */
+        int64_t espera = MIN(proximo1, proximo2) - k_uptime_get();
+        if (espera > 0) {
+            k_msleep((int32_t)espera);
+        }
     }
+    return 0;
 }
-
-
-
-//codigo original zephyr-blink
-// #include <stdio.h>
-// #include <zephyr/kernel.h>
-// #include <zephyr/drivers/gpio.h>
-
-// /* 1000 msec = 1 sec */
-// #define SLEEP_TIME_MS   500
-
-// /* The devicetree node identifier for the "led0" alias. */
-// #define LED0_NODE DT_ALIAS(led0)
-
-// /*
-//  * A build error on this line means your board is unsupported.
-//  * See the sample documentation for information on how to fix this.
-//  */
-// static const struct gpio_dt_spec led = GPIO_DT_SPEC_GET(LED0_NODE, gpios);
-
-// int main(void)
-// {
-// 	int ret;
-// 	bool led_state = true;
-
-// 	if (!gpio_is_ready_dt(&led)) {
-// 		return 0;
-// 	}
-
-// 	ret = gpio_pin_configure_dt(&led, GPIO_OUTPUT_ACTIVE);
-// 	if (ret < 0) {
-// 		return 0;
-// 	}
-
-// 	while (1) {
-// 		ret = gpio_pin_toggle_dt(&led);
-// 		if (ret < 0) {
-// 			return 0;
-// 		}
-
-// 		led_state = !led_state;
-// 		printf("LED state: %s\n", led_state ? "ON" : "OFF");
-// 		k_msleep(SLEEP_TIME_MS);
-// 	}
-// 	return 0;
-// }
