@@ -2,7 +2,7 @@
 #include <zephyr/drivers/gpio.h>
 
 #define LED1_INTERVALO_MS 1000
-#define LED2_INTERVALO_MS 500
+#define LED2_INTERVALO_MS 350
 
 #define TAMANHO_PILHA 512
 #define PRIORIDADE    7
