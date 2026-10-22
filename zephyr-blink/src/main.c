@@ -3,7 +3,7 @@
 
 /* Tempo entre cada troca de estado (acende/apaga) de cada LED */
 #define LED1_INTERVALO_MS 1000
-#define LED2_INTERVALO_MS 500
+#define LED2_INTERVALO_MS 350
 
 /* LED RGB da placa: led0 = verde, led1 = azul */
 static const struct gpio_dt_spec led1 = GPIO_DT_SPEC_GET(DT_ALIAS(led0), gpios);
